@@ -24,24 +24,54 @@ var input = [][]int{
 	{1763, 464, 182, 1932, 1209, 640, 545, 931, 1979, 197, 1774, 174, 2074, 1800, 939, 161},
 }
 
-func main() {
+func maxMinusMin(row []int) int {
+	max := 0
+	min := math.MaxInt32
+
+	for _, val := range row {
+		if val < min {
+			min = val
+		}
+		if val > max {
+			max = val
+		}
+	}
+
+	return max - min
+}
+
+func divisor(row []int) int {
+	for i := 0; i < len(row); i++ {
+		for j := i + 1; j < len(row); j++ {
+			a := row[i]
+			b := row[j]
+
+			if a < b {
+				temp := a
+				a = b
+				b = temp
+			}
+
+			if a%b == 0 {
+				return a / b
+			}
+		}
+	}
+	panic("bad input")
+}
+
+func checksum(input [][]int, kernel func([]int) int) int {
 	sum := 0
 
 	for row := 0; row < len(input); row++ {
-		max := 0
-		min := math.MaxInt32
-
-		for _, val := range input[row] {
-			if val < min {
-				min = val
-			}
-			if val > max {
-				max = val
-			}
-		}
-
-		sum += (max - min)
+		sum += kernel(input[row])
 	}
 
-	fmt.Println("sum:", sum)
+	return sum
+}
+
+func main() {
+	cs1 := checksum(input, maxMinusMin)
+	cs2 := checksum(input, divisor)
+	fmt.Printf("checksums: (%v, %v)\n", cs1, cs2)
 }
