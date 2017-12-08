@@ -18,8 +18,8 @@ func findmax(banks []int) int {
 
 func main() {
 	banks := []int{2, 8, 8, 5, 4, 2, 3, 1, 5, 5, 1, 2, 15, 13, 5, 14}
-	seen := make(map[string]struct{})
-	seen[fmt.Sprint(banks)] = struct{}{}
+	seen := make(map[string]int)
+	seen[fmt.Sprint(banks)] = 0
 
 	rounds := 0
 	for {
@@ -40,11 +40,11 @@ func main() {
 		rounds++
 
 		key := fmt.Sprint(banks)
-		if _, ok := seen[key]; ok {
+		if val, ok := seen[key]; ok {
+			fmt.Println("finished at round", rounds)
+			fmt.Println("cycle length", rounds-val)
 			break
 		}
-		seen[key] = struct{}{}
+		seen[key] = rounds
 	}
-
-	fmt.Println(rounds)
 }
