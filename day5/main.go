@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+const crazymode = true
+
 func load(file string) []int {
 	f, err := os.Open(file)
 	if err != nil {
@@ -40,7 +42,11 @@ func main() {
 
 	for pos >= 0 && pos < len(maze) {
 		offset := maze[pos]
-		maze[pos] = maze[pos] + 1
+		if crazymode && maze[pos] >= 3 {
+			maze[pos] = maze[pos] - 1
+		} else {
+			maze[pos] = maze[pos] + 1
+		}
 		pos += offset
 		steps++
 	}
