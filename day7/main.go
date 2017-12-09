@@ -18,7 +18,7 @@ func (n node) String() string {
 	return fmt.Sprintf("%v (%v) %v", n.Name, n.Weight, n.Children)
 }
 
-func parse(file string) []node {
+func parse(file string) map[string]*node {
 	f, err := os.Open(file)
 	if err != nil {
 		panic(err)
@@ -26,7 +26,7 @@ func parse(file string) []node {
 	defer f.Close()
 
 	scan := bufio.NewScanner(f)
-	nodes := make([]node, 0)
+	nodes := make(map[string]*node)
 
 	for scan.Scan() {
 		parts := strings.Split(scan.Text(), " ")
@@ -49,11 +49,11 @@ func parse(file string) []node {
 			}
 		}
 
-		nodes = append(nodes, node{
+		nodes[name] = &node{
 			Name:     name,
 			Weight:   weight,
 			Children: children,
-		})
+		}
 	}
 
 	if scan.Err() != nil {
@@ -61,6 +61,60 @@ func parse(file string) []node {
 	}
 
 	return nodes
+}
+
+func weight(nodes map[string]*node, root string, depth int) int {
+	for i := 0; i < depth; i++ {
+		fmt.Print("  ")
+	}
+	fmt.Println("->", root)
+
+	node := nodes[root]
+
+	if len(node.Children) < 2 {
+		// They had better be balanced...
+		sum := node.Weight
+		for _, child := range node.Children {
+			sum += weight(nodes, child, depth+1)
+		}
+		fmt.Printf("%v: (%v)\n", root, sum)
+		return sum
+	}
+
+	sum := node.Weight
+	weights := make([]int, len(node.Children))
+
+	for idx, child := range node.Children {
+		weight := weight(nodes, child, depth+1)
+		weights[idx] = weight
+		sum += weight
+	}
+
+	fmt.Printf("%v: (%v)\n", root, sum)
+
+	if weights[0] == weights[1] {
+		// Look for an unbalanced child further on.
+		for i := 2; i < len(weights); i++ {
+			if weights[i] != weights[0] {
+				// Child i is wrong. Adjust it.
+				offset := weights[0] - weights[i]
+				fmt.Println(node.Children[i], "should weigh", nodes[node.Children[i]].Weight+offset)
+				os.Exit(0)
+			}
+		}
+	} else if weights[0] == weights[2] {
+		// Child 1 is wrong.
+		offset := weights[0] - weights[1]
+		fmt.Println(node.Children[1], "should weigh", nodes[node.Children[1]].Weight+offset)
+		os.Exit(0)
+	} else {
+		// Child 0 is wrong.
+		offset := weights[1] - weights[0]
+		fmt.Println(node.Children[0], "should weigh", nodes[node.Children[0]].Weight+offset)
+		os.Exit(0)
+	}
+
+	return sum
 }
 
 func main() {
@@ -74,10 +128,15 @@ func main() {
 		}
 	}
 
+	root := ""
 	for _, node := range nodes {
 		if _, ok := parents[node.Name]; !ok {
-			fmt.Println(node.Name)
-			return
+			root = node.Name
+			break
 		}
 	}
+
+	fmt.Println(root)
+
+	weight(nodes, root, 0)
 }
