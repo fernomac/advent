@@ -22,7 +22,7 @@ func (g *group) Score(depth int) int {
 	return sum
 }
 
-func parse(file string) *group {
+func parse(file string) (*group, int) {
 	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err)
@@ -32,6 +32,7 @@ func parse(file string) *group {
 	var root *group
 	var cur *group
 
+	count := 0
 	garbage := false
 	bang := false
 
@@ -45,6 +46,8 @@ func parse(file string) *group {
 				bang = true
 			} else if char == '>' {
 				garbage = false
+			} else {
+				count++
 			}
 		} else {
 			switch char {
@@ -77,10 +80,11 @@ func parse(file string) *group {
 		}
 	}
 
-	return root
+	return root, count
 }
 
 func main() {
-	root := parse("input.txt")
+	root, count := parse("input.txt")
 	fmt.Println(root.Score(1))
+	fmt.Println(count)
 }
