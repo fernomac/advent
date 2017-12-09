@@ -84,6 +84,8 @@ func main() {
 	operations := parse("input.txt")
 	registers := map[string]int{}
 
+	maxmax := 0
+
 	for _, op := range operations {
 		if eval(registers, op.Condition) {
 			switch op.Opcode {
@@ -93,6 +95,10 @@ func main() {
 				registers[op.Register] -= op.Operand
 			default:
 				panic(op.Opcode)
+			}
+
+			if maxmax < registers[op.Register] {
+				maxmax = registers[op.Register]
 			}
 		}
 	}
@@ -105,4 +111,5 @@ func main() {
 	}
 
 	fmt.Println(max)
+	fmt.Println(maxmax)
 }
