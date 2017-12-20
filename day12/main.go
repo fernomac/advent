@@ -61,27 +61,48 @@ func parse(filename string) map[int]*node {
 	return result
 }
 
+func pick(m map[int]*node) int {
+	for k := range m {
+		return k
+	}
+	panic("empty")
+}
+
 func main() {
 	graph := parse("input.txt")
 
-	queue := make([]int, 0)
-	queue = append(queue, 0)
+	count := 0
 
-	visited := make(map[int]struct{})
-	visited[0] = struct{}{}
+	for len(graph) > 0 {
+		init := pick(graph)
 
-	for len(queue) > 0 {
-		id := queue[0]
-		queue = queue[1:]
+		queue := make([]int, 0)
+		queue = append(queue, init)
 
-		node := graph[id]
-		for _, edge := range node.edges {
-			if _, ok := visited[edge]; !ok {
-				queue = append(queue, edge)
-				visited[edge] = struct{}{}
+		visited := make(map[int]struct{})
+		visited[init] = struct{}{}
+
+		for len(queue) > 0 {
+			id := queue[0]
+			queue = queue[1:]
+
+			node := graph[id]
+			for _, edge := range node.edges {
+				if _, ok := visited[edge]; !ok {
+					queue = append(queue, edge)
+					visited[edge] = struct{}{}
+				}
 			}
 		}
+
+		fmt.Println(len(visited))
+
+		for k := range visited {
+			delete(graph, k)
+		}
+
+		count++
 	}
 
-	fmt.Println(len(visited))
+	fmt.Println("groups:", count)
 }
