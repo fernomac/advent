@@ -95,23 +95,82 @@ func (f *firewall) String() string {
 	return result
 }
 
-func main() {
-	fw := newFirewall(parse("input.txt"))
-
-	depth := -1
-	severity := 0
-
-	for depth < len(fw.ranges)-1 {
-		depth++
-
-		if fw.ranges[depth] > 0 && fw.positions[depth] == 0 {
-			// Caught.
-			severity += (depth * fw.ranges[depth])
-		}
-
-		// Move sensors.
+func run(ranges []int, delay int) (bool, int) {
+	fw := newFirewall(ranges)
+	for i := 0; i < delay; i++ {
 		fw.Step()
 	}
 
-	fmt.Println(severity)
+	depth := -1
+	caught := false
+	severity := 0
+
+	for depth < len(ranges)-1 {
+		depth++
+
+		if ranges[depth] > 0 && fw.positions[depth] == 0 {
+			caught = true
+			severity += (depth * ranges[depth])
+		}
+
+		fw.Step()
+	}
+
+	return caught, severity
+}
+
+func mapit(arr []int, f func(int) int) []int {
+	result := make([]int, len(arr))
+	for i := 0; i < len(arr); i++ {
+		result[i] = f(arr[i])
+	}
+	return result
+}
+
+func main() {
+	// ranges := []int{3, 2, 0, 0, 4, 0, 4}
+	ranges := parse("input.txt")
+
+	modulos := mapit(ranges, func(val int) int {
+		if val < 2 {
+			return val
+		}
+		return ((val - 2) * 2) + 2
+	})
+
+	fmt.Println(modulos)
+
+	delay := 0
+	for {
+		caught := false
+		for i := 0; i < len(modulos); i++ {
+			if modulos[i] > 0 {
+				if (delay+i)%modulos[i] == 0 {
+					caught = true
+					break
+				}
+			}
+		}
+		if !caught {
+			fmt.Println(delay)
+			break
+		}
+		delay++
+	}
+
+	// delay := 0
+	// for {
+	// 	caught, severity := run(ranges, delay)
+	// 	if delay == 0 {
+	// 		fmt.Println("Severity with delay 0:", severity)
+	// 	}
+	// 	if !caught {
+	// 		fmt.Println("Not caught with delay", delay)
+	// 		break
+	// 	}
+	// 	if severity == 0 {
+	// 		fmt.Println("Severity=0 at delay=", delay)
+	// 	}
+	// 	delay++
+	// }
 }
