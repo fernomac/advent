@@ -39,86 +39,118 @@ func parse(filename string) []instruction {
 	return result
 }
 
-func eval(str string, registers map[string]int) int {
+type thread struct {
+	id        int
+	code      []instruction
+	ip        int
+	registers map[string]int
+	input     <-chan int
+	output    chan<- int
+	sends     int
+}
+
+func newThread(code []instruction, id int, input <-chan int, output chan<- int) *thread {
+	return &thread{
+		id:        id,
+		code:      code,
+		ip:        0,
+		registers: map[string]int{"p": id},
+		input:     input,
+		output:    output,
+	}
+}
+
+func (t *thread) eval(str string) int {
 	i, err := strconv.Atoi(str)
 	if err == nil {
 		return i
 	}
-	return registers[str]
+	return t.registers[str]
 }
 
-func exec(ip int, op instruction, registers map[string]int) int {
-	switch op.opcode {
+func (t *thread) step() bool {
+	op := t.code[t.ip]
+	opcode := op.opcode
+	args := op.args
+
+	switch opcode {
 	case "snd":
-		val := eval(op.args[0], registers)
-		fmt.Printf("snd %v (%v)\n", op.args[0], val)
-		registers["snd"] = val
-		return ip + 1
+		val := t.eval(args[0])
+		fmt.Printf("%v: snd %v (%v)\n", t.id, args[0], val)
+		t.output <- val
+		t.sends++
+		t.ip++
 
 	case "set":
-		val := eval(op.args[1], registers)
-		registers[op.args[0]] = val
-		fmt.Printf("set %v %v (%v)\n", op.args[0], op.args[1], val)
-		return ip + 1
+		val := t.eval(args[1])
+		t.registers[args[0]] = val
+		fmt.Printf("%v: set %v %v (%v)\n", t.id, args[0], args[1], val)
+		t.ip++
 
 	case "add":
-		val := eval(op.args[1], registers)
-		result := registers[op.args[0]] + val
-		fmt.Printf("add %v (%v) %v (%v) = %v\n", op.args[0], registers[op.args[0]], op.args[1], val, result)
-		registers[op.args[0]] = result
-		return ip + 1
+		val := t.eval(args[1])
+		result := t.registers[args[0]] + val
+		fmt.Printf("%v: add %v (%v) %v (%v) = %v\n", t.id, args[0], t.registers[args[0]], args[1], val, result)
+		t.registers[args[0]] = result
+		t.ip++
 
 	case "mul":
-		val := eval(op.args[1], registers)
-		result := registers[op.args[0]] * val
-		fmt.Printf("mul %v (%v) %v (%v) = %v\n", op.args[0], registers[op.args[0]], op.args[1], val, result)
-		registers[op.args[0]] = result
-		return ip + 1
+		val := t.eval(args[1])
+		result := t.registers[args[0]] * val
+		fmt.Printf("%v: mul %v (%v) %v (%v) = %v\n", t.id, args[0], t.registers[args[0]], args[1], val, result)
+		t.registers[args[0]] = result
+		t.ip++
 
 	case "mod":
-		val := eval(op.args[1], registers)
-		result := registers[op.args[0]] % val
-		fmt.Printf("mod %v (%v) %v (%v) = %v\n", op.args[0], registers[op.args[0]], op.args[1], val, result)
-		registers[op.args[0]] = result
-		return ip + 1
+		val := t.eval(args[1])
+		result := t.registers[args[0]] % val
+		fmt.Printf("%v: mod %v (%v) %v (%v) = %v\n", t.id, args[0], t.registers[args[0]], args[1], val, result)
+		t.registers[args[0]] = result
+		t.ip++
 
 	case "rcv":
-		x := eval(op.args[0], registers)
-		if x == 0 {
-			// nop
-			return ip + 1
+		select {
+		case val := <-t.input:
+			fmt.Printf("%v: rcv %v (%v)\n", t.id, args[0], val)
+			t.registers[args[0]] = val
+			t.ip++
+
+		default:
+			return false
 		}
-		panic(fmt.Sprintf("rcv %v (%v) = %v\n", op.args[0], x, registers["snd"]))
 
 	case "jgz":
-		x := eval(op.args[0], registers)
+		x := t.eval(args[0])
+		y := 1
 		if x > 0 {
-			y := eval(op.args[1], registers)
-			fmt.Printf("jgz %v (%v) %v (%v)\n", op.args[0], x, op.args[1], y)
-			return ip + y
+			y = t.eval(args[1])
 		}
-		fmt.Printf("jgz %v (%v) %v (nop)\n", op.args[0], x, op.args[1])
-		return ip + 1
+		fmt.Printf("%v: jgz %v (%v) %v (%v)\n", t.id, op.args[0], x, op.args[1], y)
+		t.ip += y
 
 	default:
 		panic(op)
 	}
+
+	return true
 }
 
 func main() {
 	code := parse("input.txt")
-	// for _, op := range code {
-	// 	fmt.Println(op)
-	// }
 
-	ip := 0
-	registers := make(map[string]int)
+	in := make(chan int, 100000)
+	out := make(chan int, 100000)
+
+	t0 := newThread(code, 0, in, out)
+	t1 := newThread(code, 1, out, in)
 
 	for {
-		if ip < 0 || ip >= len(code) {
+		ok0 := t0.step()
+		ok1 := t1.step()
+
+		if !ok0 && !ok1 {
+			fmt.Println("deadlock:", t1.sends)
 			break
 		}
-		op := code[ip]
-		ip = exec(ip, op, registers)
 	}
 }
