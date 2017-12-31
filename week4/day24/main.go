@@ -33,27 +33,33 @@ func index(cs []*component) map[int][]*component {
 	return result
 }
 
-func atoi(s string) int {
-	i, e := strconv.Atoi(s)
-	if e != nil {
-		panic(e)
-	}
-	return i
+type score struct {
+	length, strength int
 }
 
-func maxBridge(parts map[int][]*component, start int) int {
+func (s *score) IsGreaterThan(o *score) bool {
+	if s.length > o.length {
+		return true
+	}
+	return s.strength > o.strength
+}
+
+func maxBridge(parts map[int][]*component, start int) score {
 	matches := parts[start]
 
-	max := 0
+	max := score{}
 
 	for _, match := range matches {
 		if !match.used {
 			match.used = true
 
 			other := match.Other(start)
-			val := start + other + maxBridge(parts, other)
-			if val > max {
-				max = val
+			score := maxBridge(parts, other)
+			score.length++
+			score.strength += (start + other)
+
+			if score.IsGreaterThan(&max) {
+				max = score
 			}
 
 			match.used = false
@@ -70,6 +76,14 @@ func main() {
 	max := maxBridge(index, 0)
 
 	fmt.Println(max)
+}
+
+func atoi(s string) int {
+	i, e := strconv.Atoi(s)
+	if e != nil {
+		panic(e)
+	}
+	return i
 }
 
 func parse(filename string) []*component {
