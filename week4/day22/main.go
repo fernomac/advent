@@ -9,10 +9,10 @@ import (
 type direction int
 
 const (
-	up    = direction(0)
-	right = direction(1)
-	down  = direction(2)
-	left  = direction(3)
+	up direction = iota
+	right
+	down
+	left
 )
 
 func (d direction) DX() int {
@@ -38,14 +38,48 @@ func (d direction) DY() int {
 }
 
 func (d direction) TurnRight() direction {
-	return (d + 1) % 4
+	switch d {
+	case up:
+		return right
+	case down:
+		return left
+	case right:
+		return down
+	case left:
+		return up
+	default:
+		panic("whoops")
+	}
 }
 
 func (d direction) TurnLeft() direction {
-	if d == 0 {
-		return direction(3)
+	switch d {
+	case up:
+		return left
+	case down:
+		return right
+	case right:
+		return up
+	case left:
+		return down
+	default:
+		panic("whoops")
 	}
-	return d - 1
+}
+
+func (d direction) Reverse() direction {
+	switch d {
+	case up:
+		return down
+	case down:
+		return up
+	case right:
+		return left
+	case left:
+		return right
+	default:
+		panic("whoops")
+	}
 }
 
 func (d direction) String() string {
@@ -63,6 +97,15 @@ func (d direction) String() string {
 	}
 }
 
+type state int
+
+const (
+	clean state = iota
+	weakened
+	infected
+	flagged
+)
+
 type point struct {
 	x, y int
 }
@@ -78,23 +121,35 @@ func (p *point) String() string {
 
 func main() {
 	// infected, position := parse("test.txt")
-	infected, position := parse("input.txt")
+	states, position := parse("input.txt")
 
 	direction := up
-	iters := 10000
+	iters := 10000000
 	infections := 0
 
 	for i := 0; i < iters; i++ {
 		// print(infected, position)
 		// fmt.Println()
 
-		if infected[position] {
-			direction = direction.TurnRight()
-			infected[position] = false
-		} else {
+		switch states[position] {
+		case clean:
 			direction = direction.TurnLeft()
-			infected[position] = true
+			states[position] = weakened
+
+		case weakened:
+			states[position] = infected
 			infections++
+
+		case infected:
+			direction = direction.TurnRight()
+			states[position] = flagged
+
+		case flagged:
+			direction = direction.Reverse()
+			states[position] = clean
+
+		default:
+			panic("whoops")
 		}
 
 		position.Move(direction)
@@ -104,14 +159,14 @@ func main() {
 	fmt.Println(infections)
 }
 
-func parse(filename string) (map[point]bool, point) {
+func parse(filename string) (map[point]state, point) {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
 
 	lines := strings.Split(string(bytes), "\n")
-	result := map[point]bool{}
+	result := map[point]state{}
 
 	center := point{}
 	center.x = len(lines[0]) / 2
@@ -120,9 +175,9 @@ func parse(filename string) (map[point]bool, point) {
 	for y, line := range lines {
 		for x, char := range line {
 			if char == '#' {
-				result[point{x, y}] = true
+				result[point{x, y}] = infected
 			} else if char == '.' {
-				result[point{x, y}] = false
+				result[point{x, y}] = clean
 			} else {
 				panic("whoops")
 			}
